@@ -69,7 +69,7 @@ where_conditions([{_,_} | _] = Selector) ->
                                     if
                                         is_list(V) ->
                                             [H | _] = V,
-                                            to_l(K) ++ ?IN(H) ++ ?BKTLS ++ defs(V) ++ ?BKTRS;
+                                            to_l(K) ++ ?IN(H) ++ ?BKTL ++ defs(V) ++ ?BKTR;
                                         true ->
                                             to_l(K) ++ ?ARG
                                     end

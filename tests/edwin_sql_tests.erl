@@ -8,7 +8,9 @@ select_test() ->
     R2 = edwin_sql:select(table, [], []),
     ?assertEqual({"SELECT * FROM table", []}, R2),
     R3 = edwin_sql:select(table, [id, name], []),
-    ?assertEqual({"SELECT id, name FROM table", []}, R3).
+    ?assertEqual({"SELECT id, name FROM table", []}, R3),
+    R4 = edwin_sql:select(table, [id, name, status], [{type, <<"test">>}, {id, [1, 2, 3]}]),
+    ?assertEqual({"SELECT id, name, status FROM table WHERE type = ? AND id IN (?, ?, ?)", [<<"test">>, 1, 2, 3]}, R4).
 
 update_test() ->
     R1 = edwin_sql:update(table, [{name, <<"test">>}, {type, 2}], [{id, 4}]),
