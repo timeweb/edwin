@@ -2,44 +2,44 @@
 
 -export([select/3]).
 -export([select/2]).
--export([select/1]).
--export([update/2]).
--export([insert/2]).
--export([delete/1]).
+-export([select/4]).
+-export([update/3]).
+-export([insert/3]).
 -export([delete/2]).
--export([ex/1]).
+-export([delete/3]).
+-export([ex/3]).
 -export([ex/2]).
 
-select(Table) ->
-    select(Table, []).
-select(Table, Columns) ->
-    select(Table, Columns, []).
-select(Table, Columns, Where) ->
+select(Pool, Table) ->
+    select(Pool, Table, []).
+select(Pool, Table, Columns) ->
+    select(Pool, Table, Columns, []).
+select(Pool, Table, Columns, Where) when is_atom(Table) ->
     {SQL, Data} = edwin_sql:select(Table, Columns, Where),
-    emysql:execute(SQL, Data).
+    ex(Pool, SQL, Data).
 
-update(Table, Args) ->
-    update(Table, Args, []).
-update(Table, Args, Where) ->
+update(Pool, Table, Args) ->
+    update(Pool, Table, Args, []).
+update(Pool, Table, Args, Where) when is_atom(Table) ->
     {SQL, Data} = edwin_sql:update(Table, Args, Where),
-    emysql:execute(SQL, Data).
+    ex(Pool, SQL, Data).
 
-insert(Table, [{_,_} | _] = Query) when is_atom(Table)->
+insert(Pool, Table, [{_,_} | _] = Query) when is_atom(Table)->
     {SQL, Data} = edwin_sql:insert(Table, Query),
-    emysql:execute(SQL, Data).
+    ex(Pool, SQL, Data).
 
-delete(Table) ->
-    delete(Table, []).
-delete(Table, Where) ->
+delete(Pool, Table) ->
+    delete(Pool, Table, []).
+delete(Pool, Table, Where) when is_atom(Table) ->
     {SQL, Data} = edwin_sql:delete(Table, Where),
-    emysql:execute(SQL, Data).
+    ex(Pool, SQL, Data).
 
-ex(SQL) ->
-    ex(SQL, []).
-ex(SQL, Data) ->
+ex(Pool, SQL) ->
+    ex(Pool, SQL, []).
+ex(Pool, SQL, Data) when is_atom(Pool)->
     STM = random_atom(5),
     emysql:prepare(STM, SQL),
-    emysql:execute(pool0, STM, Data).
+    emysql:execute(Pool, STM, Data).
 
 random_atom(Len) ->
     Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
