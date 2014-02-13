@@ -16,7 +16,11 @@ select(Pool, Table, Columns) ->
     select(Pool, Table, Columns, []).
 select(Pool, Table, Columns, Where) when is_atom(Table) ->
     {SQL, Data} = edwin_sql:select(Table, Columns, Where),
-    ex(Pool, SQL, Data).
+    case emysql_util:as_json(ex(Pool, SQL, Data)) of
+        Result when length(Result) =:= 1 ->
+            lists:flatten(Result);
+        Result -> Result
+    end.
 
 update(Pool, Table, Args) ->
     update(Pool, Table, Args, []).
