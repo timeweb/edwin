@@ -1,5 +1,7 @@
 -module(edwin).
 
+-include_lib("emysql/include/emysql.hrl").
+
 -export([select/3]).
 -export([select/2]).
 -export([select/4]).
@@ -16,11 +18,7 @@ select(Pool, Table, Columns) ->
     select(Pool, Table, Columns, []).
 select(Pool, Table, Columns, Where) when is_atom(Table) ->
     {SQL, Data} = edwin_sql:select(Table, Columns, Where),
-    case emysql_util:as_json(ex(Pool, SQL, Data)) of
-        Result when length(Result) =:= 1 ->
-            lists:flatten(Result);
-        Result -> Result
-    end.
+    as_p(emysql_util:as_json(ex(Pool, SQL, Data))).
 
 update(Pool, Table, Args) ->
     update(Pool, Table, Args, []).
@@ -43,7 +41,22 @@ ex(Pool, SQL) ->
 ex(Pool, SQL, Data) when is_atom(Pool)->
     STM = random_atom(5),
     emysql:prepare(STM, SQL),
-    emysql:execute(Pool, STM, Data).
+    case emysql:execute(Pool, STM, Data) of
+        #ok_packet{affected_rows = AR, insert_id = ID} ->
+            [{affected_rows, AR}, {insert_id, ID}];
+        #result_packet{} = Result ->
+            as_p(emysql_util:as_json(Result));
+        Result when length(Result) =:= 1 ->
+            lists:flatten(Result);
+        Result -> Result
+    end.
+
+as_p(P) ->
+    case P of
+        Proplist when length(Proplist) =:= 1 ->
+            lists:flatten(Proplist);
+        Proplist -> Proplist
+    end.
 
 random_atom(Len) ->
     Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
