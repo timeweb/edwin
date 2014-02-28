@@ -6,6 +6,7 @@
 -export([select/2]).
 -export([select/4]).
 -export([update/3]).
+-export([update/4]).
 -export([insert/3]).
 -export([delete/2]).
 -export([delete/3]).

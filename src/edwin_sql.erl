@@ -50,7 +50,7 @@ call(Proc, Args) when is_atom(Proc) ->
 columns(C) when C =:= []; C =:= ?STAR ->
     ?STAR;
 columns([{_,_} | _] = C) ->
-    string:join([to_l(K) || {K, _} <- C], ?COMMA);
+    string:join([to_l(K, V) || {K, V} <- C], ?COMMA);
 columns(C) ->
     string:join([to_l(S) || S <- C], ?COMMA).
 
@@ -64,6 +64,9 @@ to_l(A) when is_atom(A) -> atom_to_list(A);
 to_l(B) when is_binary(B) -> binary_to_list(B);
 to_l(I) when is_integer(I) -> integer_to_list(I);
 to_l(L) when is_list(L) -> L.
+
+to_l(K, V) ->
+    to_l(K) ++ " as " ++ to_l(V).
 
 prepare_args(Args) ->
     [V1 || V1 <- lists:flatten([V || {_, V} <- Args]), V1 =/= notin].
