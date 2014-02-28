@@ -42,14 +42,17 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
     STM = random_atom(5),
     emysql:prepare(STM, SQL),
     case emysql:execute(Pool, STM, Data) of
-        #ok_packet{affected_rows = AR, insert_id = ID} ->
-            [{affected_rows, AR}, {insert_id, ID}];
+        #ok_packet{insert_id = ID} ->
+            {ok, ID};
         #result_packet{} = Result ->
             as_p(emysql_util:as_json(Result));
         Result when length(Result) =:= 1 ->
             lists:flatten(Result);
         Result -> Result
     end.
+
+call(Pool, Proc, Args) ->
+    edwin_sql:call(Proc, Args).
 
 as_p(P) ->
     case P of

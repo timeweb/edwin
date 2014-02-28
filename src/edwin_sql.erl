@@ -4,6 +4,7 @@
 -export([update/3]).
 -export([delete/2]).
 -export([insert/2]).
+-export([call/2]).
 
 -define(COMMA, ", ").
 -define(ARG, " = ?").
@@ -24,6 +25,7 @@
 -define(AND, " AND ").
 -define(IN(H), if H =:= notin -> " NOT IN "; true -> " IN " end).
 -define(DATA(P), [V || {_,V} <- P]).
+-define(CALL, "CALL ").
 
 select(Table, Columns, Where) ->
     SQL= ?SELECT ++ columns(Columns) ++ ?FROM ++ to_l(Table) ++ where_conditions(Where),
@@ -42,6 +44,9 @@ insert(Table, Args) ->
     SQL = ?INSERT ++ to_l(Table) ++ ?BKTLS ++ columns(Args) ++ ?VALS ++ defs(Args) ++ ?BKTR,
     {SQL, ?DATA(Args1)}.
 
+call(Proc, Args) when is_atom(Proc) ->
+    ?CALL ++ to_l(Proc) ++ ?BKTL ++ args(Args) ++ ?BKTR.
+
 columns(C) when C =:= []; C =:= ?STAR ->
     ?STAR;
 columns([{_,_} | _] = C) ->
@@ -52,8 +57,12 @@ columns(C) ->
 defs(Columns) ->
     string:join([?Q || _ <- lists:seq(1, length(Columns))], ?COMMA).
 
+args(Args) ->
+    string:join([to_l(A) || A <- Args], ?COMMA).
+
 to_l(A) when is_atom(A) -> atom_to_list(A);
 to_l(B) when is_binary(B) -> binary_to_list(B);
+to_l(I) when is_integer(I) -> integer_to_list(I);
 to_l(L) when is_list(L) -> L.
 
 prepare_args(Args) ->
