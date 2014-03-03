@@ -1,0 +1,15 @@
+#!/bin/sh -xe
+
+mysql $* <<EOF
+DROP DATABASE IF EXISTS edwin;
+CREATE DATABASE edwin;
+CREATE TABLE edwin.table (test CHAR(20));
+
+DROP DATABASE IF EXISTS edwin2;
+CREATE DATABASE edwin2;
+DROP DATABASE IF EXISTS edwin3;
+CREATE DATABASE edwin3;
+CREATE TABLE edwin2.coltest (a INT(11) NOT NULL);
+CREATE TABLE edwin3.coltest3 (b int(11) NOT NULL);
+
+EOF

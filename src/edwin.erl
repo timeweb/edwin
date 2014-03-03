@@ -47,7 +47,7 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
         #ok_packet{insert_id = ID} ->
             {ok, ID};
         #result_packet{} = Result ->
-            as_p(emysql_util:as_json(Result));
+            emysql_util:as_json(Result);
         Result -> Result
     end.
 
@@ -57,13 +57,6 @@ call(Pool, Proc, Args) ->
 
 execute(Pool, SQL) ->
     emysql:execute(Pool, SQL).
-
-as_p(P) ->
-    case P of
-        Proplist when length(Proplist) =:= 1 ->
-            lists:flatten(Proplist);
-        Proplist -> Proplist
-    end.
 
 random_atom(Len) ->
     Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),

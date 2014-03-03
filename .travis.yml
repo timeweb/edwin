@@ -1,0 +1,14 @@
+language: erlang
+
+services:
+  - mysql
+
+before_script:
+  - "./travis-ci-setup -h127.0.0.1 -utravis"
+  - make
+
+script: "make eunit"
+otp_release:
+  - 17.0-rc1
+  - R16B03-1
+  - R16B
