@@ -5,7 +5,7 @@ services:
 
 before_script:
   - "./travis-ci-setup -h127.0.0.1 -utravis"
-  - make
+  - make all
 
 script: "make eunit"
 otp_release:
