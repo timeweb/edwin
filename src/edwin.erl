@@ -48,8 +48,6 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
             {ok, ID};
         #result_packet{} = Result ->
             as_p(emysql_util:as_json(Result));
-        Result when length(Result) =:= 1 ->
-            lists:flatten(Result);
         Result -> Result
     end.
 
