@@ -1,7 +1,7 @@
 {application, edwin,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Erlang database helper"},
+  {vsn, "0.1.0"},
   {registered, []},
   {applications, [
                   kernel,
