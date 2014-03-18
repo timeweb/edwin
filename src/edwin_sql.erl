@@ -23,7 +23,7 @@
 -define(STAR, "*").
 -define(WHERE, " WHERE ").
 -define(AND, " AND ").
--define(IN(H), if H =:= notin -> " NOT IN "; true -> " IN " end).
+-define(IN, " IN ").
 -define(DATA(P), [V || {_,V} <- P]).
 -define(CALL, "CALL ").
 -define(AS, " AS ").
@@ -78,21 +78,27 @@ to_l(K, V) ->
     to_l(K) ++ ?AS ++ to_l(V).
 
 prepare_args(Args) ->
-    [V1 || V1 <- lists:flatten([V || {_, V} <- Args]), V1 =/= notin].
+    [V1 || V1 <- lists:flatten([ fun({_,I})->I;({_,_,I})->I end(V) || V <- Args])].
 
 cols([{_,_} | _] = Query) ->
     string:join(lists:zipwith(fun({K, _}, _I) -> to_l(K) ++ ?ARG end, Query, lists:seq(1, length(Query))), ?COMMA).
 
 where_conditions([]) ->
     "";
-where_conditions([{_,_} | _] = Selector) ->
+where_conditions(Selector) when is_list(Selector) ->
     ReqCols = lists:zipwith(fun({K, V}, _I) ->
                                     if
                                         is_list(V) ->
-                                            [H | _] = V,
-                                            to_l(K) ++ ?IN(H) ++ ?BKTL ++ defs(V) ++ ?BKTR;
+                                            to_l(K) ++ ?IN ++ ?BKTL ++ defs(V) ++ ?BKTR;
                                         true ->
                                             to_l(K) ++ ?ARG
+                                    end;
+                               ({K, C, V}, _I) -> 
+                                    if
+                                        is_list(V) ->
+                                            to_l(K) ++ [$ ] ++ to_l(C) ++ [$ ] ++ ?BKTL ++ defs(V) ++ ?BKTR;
+                                        true ->
+                                            to_l(K) ++ [$ ] ++ to_l(C) ++ [$ ] ++ ?Q 
                                     end
                             end, Selector, lists:seq(1, length(Selector))),
     ?WHERE ++ string:join(ReqCols, ?AND).
