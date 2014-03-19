@@ -47,8 +47,9 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
         #ok_packet{insert_id = ID} ->
             {ok, ID};
         #result_packet{} = Result ->
-            emysql_util:as_json(Result);
-        Result -> Result
+            result(emysql_util:as_json(Result));
+        Result ->
+            Result
     end.
 
 call(Pool, Proc, Args) ->
@@ -57,6 +58,12 @@ call(Pool, Proc, Args) ->
 
 execute(Pool, SQL) ->
     emysql:execute(Pool, SQL).
+
+result(List) when length(List) =:= 1 ->
+    maps:from_list(lists:flatten(List));
+result(List) ->
+    io:format("TEST!"),
+    [maps:from_list(P) || P <- List].
 
 random_atom(Len) ->
     Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
