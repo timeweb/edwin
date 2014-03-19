@@ -62,7 +62,6 @@ execute(Pool, SQL) ->
 result(List) when length(List) =:= 1 ->
     maps:from_list(lists:flatten(List));
 result(List) ->
-    io:format("TEST!"),
     [maps:from_list(P) || P <- List].
 
 random_atom(Len) ->
