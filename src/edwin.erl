@@ -55,14 +55,21 @@ ex(Pool, SQL) ->
 ex(Pool, SQL, Data) when is_atom(Pool)->
     STM = random_atom(5),
     emysql:prepare(STM, SQL),
-    case emysql:execute(Pool, STM, Data) of
-        #ok_packet{insert_id = ID} ->
-            {ok, ID};
-        #result_packet{} = Result ->
-            result(emysql_util:as_json(Result));
-        Result ->
-            Result
+    try
+        ex(emysql:execute(Pool, STM, Data))
+    catch
+        exit:{Reason, _} ->
+            {error, Reason}
     end.
+
+ex(#ok_packet{insert_id = Id}) ->
+    {ok, Id};
+ex(#result_packet{} = Result) ->
+    result(emysql_util:as_json(Result));
+ex(#error_packet{} = Reason) ->
+    {error, Reason};
+ex(Result) ->
+    Result.
 
 call(Pool, Proc, Args) ->
     SQL = edwin_sql:call(Proc, Args),
