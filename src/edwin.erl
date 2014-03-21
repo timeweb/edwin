@@ -13,6 +13,7 @@
 -export([ex/3]).
 -export([ex/2]).
 -export([call/3]).
+-export([fn/3]).
 
 select(Pool, Table) ->
     select(Pool, Table, []).
@@ -66,6 +67,10 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
 call(Pool, Proc, Args) ->
     SQL = edwin_sql:call(Proc, Args),
     execute(Pool, SQL).
+
+fn(Pool, Fun, Args) ->
+    SQL = edwin_sql:fn(Fun, Args),
+    ex(Pool, SQL).
 
 execute(Pool, SQL) ->
     emysql:execute(Pool, SQL).
