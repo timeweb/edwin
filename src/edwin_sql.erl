@@ -62,9 +62,9 @@ fn(Fun, Args) when is_atom(Fun), is_list(Args) ->
 columns(C) when C =:= []; C =:= ?STAR ->
     ?STAR;
 columns([{_,_} | _] = C) ->
-    string:join([to_l(K) || {K, _} <- C], ?COMMA);
+    string:join(["`" ++ to_l(K) ++ "`" || {K, _} <- C], ?COMMA);
 columns(C) ->
-    string:join([to_l(S) || S <- C], ?COMMA).
+    string:join(["`" ++ to_l(S) ++ "`"|| S <- C], ?COMMA).
 
 columns_as(C) when C =:= []; C =:= ?STAR ->
     ?STAR;
