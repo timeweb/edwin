@@ -62,6 +62,8 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
             {error, Reason}
     end.
 
+ex(#ok_packet{insert_id = 0, affected_rows = AffectedRows}) ->
+    {ok, AffectedRows};
 ex(#ok_packet{insert_id = Id}) ->
     {ok, Id};
 ex(#result_packet{} = Result) ->
