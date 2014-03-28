@@ -12,6 +12,7 @@
 -export([delete/3]).
 -export([ex/3]).
 -export([ex/2]).
+-export([execute/2]).
 -export([call/3]).
 -export([fn/3]).
 
@@ -97,7 +98,7 @@ fn(Pool, Fun, Args) ->
 
 
 execute(Pool, SQL) ->
-    emysql:execute(Pool, SQL).
+    ex(emysql:execute(Pool, SQL)).
 
 
 result(List) when length(List) =:= 1 ->
