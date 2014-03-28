@@ -66,12 +66,13 @@ columns([{_,_} | _] = C) ->
 columns(C) ->
     string:join(["`" ++ to_l(S) ++ "`"|| S <- C], ?COMMA).
 
+
 columns_as(C) when C =:= []; C =:= ?STAR ->
     ?STAR;
 columns_as([{_,_} | _] = C) ->
     string:join([to_l(K, V) || {K, V} <- C], ?COMMA);
 columns_as(C) ->
-    string:join([to_l(S) || S <- C], ?COMMA).
+    string:join(["`" ++ to_l(S) ++ "`" || S <- C], ?COMMA).
 
 
 defs(Columns) ->
@@ -98,7 +99,7 @@ to_l(I) when is_integer(I) -> integer_to_list(I);
 to_l(L) when is_list(L) -> L.
 
 to_l(K, V) ->
-    to_l(K) ++ ?AS ++ to_l(V).
+    "`" ++ to_l(K) ++ "`" ++ ?AS ++ "`" ++ to_l(V) ++ "`".
 
 
 prepare_args(Args) ->
