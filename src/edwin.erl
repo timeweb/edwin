@@ -53,10 +53,17 @@ delete(Pool, Table, Where) when is_map(Where) ->
 ex(Pool, SQL) ->
     ex(Pool, SQL, []).
 ex(Pool, SQL, Data) when is_atom(Pool)->
-    STM = random_atom(5),
-    emysql:prepare(STM, SQL),
+    StmtName = case edwin_st:get_stmt(SQL) of
+                   null ->
+                       StmtNew = random_atom(5),
+                       emysql:prepare(StmtNew, SQL),
+                       edwin_st:set_stmt(StmtNew, SQL),
+                       StmtNew;
+                   Stmt when is_atom(Stmt) ->
+                       Stmt
+               end,
     try
-        ex(emysql:execute(Pool, STM, Data))
+        ex(emysql:execute(Pool, StmtName, Data))
     catch
         exit:{Reason, _} ->
             {error, Reason}
