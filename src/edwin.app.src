@@ -5,7 +5,8 @@
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  emysql
                  ]},
   {mod, { edwin_app, []}},
   {env, []}
