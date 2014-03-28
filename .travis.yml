@@ -9,4 +9,4 @@ before_script:
 
 script: "make eunit"
 otp_release:
-  - 17.0-rc2
+  - 17.0-rc1
