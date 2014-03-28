@@ -56,7 +56,7 @@ call(Proc, Args) when is_atom(Proc) ->
 
 
 fn(Fun, Args) when is_atom(Fun), is_list(Args) ->
-    ?SELECT ++ to_l(Fun) ++ ?BKTL ++ args_with_type(Args) ++ ?BKTR ++ ?AS ++ "result".
+    ?SELECT ++ to_l(Fun) ++ ?BKTL ++ defs(Args) ++ ?BKTR ++ ?AS ++ "result".
 
 
 columns(C) when C =:= []; C =:= ?STAR ->

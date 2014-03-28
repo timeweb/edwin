@@ -15,6 +15,7 @@
 -export([call/3]).
 -export([fn/3]).
 
+
 select(Pool, Table) ->
     select(Pool, Table, []).
 
@@ -30,6 +31,7 @@ select(Pool, Table, Columns, Where) when is_map(Where) ->
     {SQL, Data} = edwin_sql:select(Table, Columns, maps:to_list(Where)),
     ex(Pool, SQL, Data).
 
+
 update(Pool, Table, Args) ->
     update(Pool, Table, Args, #{}).
 update(Pool, Table, Args, Where) when is_integer(Where) ->
@@ -38,9 +40,11 @@ update(Pool, Table, Args, Where) when is_map(Where), is_map(Args) ->
     {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where)),
     ex(Pool, SQL, Data).
 
+
 insert(Pool, Table, Values) when is_atom(Table), is_map(Values) ->
     {SQL, Data} = edwin_sql:insert(Table, maps:to_list(Values)),
     ex(Pool, SQL, Data).
+
 
 delete(Pool, Table) ->
     delete(Pool, Table, #{}).
@@ -50,12 +54,13 @@ delete(Pool, Table, Where) when is_map(Where) ->
     {SQL, Data} = edwin_sql:delete(Table, maps:to_list(Where)),
     ex(Pool, SQL, Data).
 
+
 ex(Pool, SQL) ->
     ex(Pool, SQL, []).
 ex(Pool, SQL, Data) when is_atom(Pool)->
     StmtName = case edwin_st:get_stmt(SQL) of
                    null ->
-                       StmtNew = random_atom(5),
+                       StmtNew = random_atom(10),
                        emysql:prepare(StmtNew, SQL),
                        edwin_st:set_stmt(StmtNew, SQL),
                        StmtNew;
@@ -80,21 +85,26 @@ ex(#error_packet{} = Reason) ->
 ex(Result) ->
     Result.
 
+
 call(Pool, Proc, Args) ->
     SQL = edwin_sql:call(Proc, Args),
     execute(Pool, SQL).
 
+
 fn(Pool, Fun, Args) ->
     SQL = edwin_sql:fn(Fun, Args),
-    ex(Pool, SQL).
+    ex(Pool, SQL, Args).
+
 
 execute(Pool, SQL) ->
     emysql:execute(Pool, SQL).
+
 
 result(List) when length(List) =:= 1 ->
     maps:from_list(lists:flatten(List));
 result(List) ->
     [maps:from_list(P) || P <- List].
+
 
 random_atom(Len) ->
     Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
