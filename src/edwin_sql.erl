@@ -28,21 +28,31 @@
 -define(DATA(P), [V || {_,V} <- P]).
 -define(CALL, "CALL ").
 -define(AS, " AS ").
-
+-define(SPC, " ").
+-define(EQ, " = ").
+-define(BT, "`").
+-define(JOIN, " JOIN ").
+-define(ON, " ON ").
+-define(DOT, ".").
+-define(CMA, ",").
+-define(CMAS, ", ").
 
 select(Table, Columns, Where) ->
-    SQL= ?SELECT ++ columns_as(Columns) ++ ?FROM ++ to_l(Table) ++ where_conditions(Where),
-    {SQL, prepare_args(Where)}.
+    {Conditions, Args} = parse_conditions(Where, Table),
+    SQL= ?SELECT ++ columns_as(Columns, Table) ++ ?FROM ++ bt(Table) ++ Conditions,
+    {SQL, Args}.
 
 
 update(Table, Args, Where) ->
-    SQL = ?UPDATE ++ to_l(Table) ++ ?SET ++ cols(Args) ++ where_conditions(Where),
-    {SQL, ?DATA(Args) ++ ?DATA(Where)}.
+    {Conditions, WhereArgs} = parse_conditions(Where, Table),
+    SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ cols(Args) ++ Conditions,
+    {SQL, ?DATA(Args) ++ WhereArgs}.
 
 
 delete(Table, Where) ->
-    SQL = ?DELETE ++ to_l(Table) ++ where_conditions(Where),
-    {SQL, ?DATA(Where)}.
+    {Conditions, Args} = parse_conditions(Where, Table),
+    SQL = ?DELETE ++ bt(Table) ++ Conditions,
+    {SQL, Args}.
 
 
 insert(Table, Args) ->
@@ -62,18 +72,16 @@ fn(Fun, Args) when is_atom(Fun), is_list(Args) ->
 columns(C) when C =:= []; C =:= ?STAR ->
     ?STAR;
 columns([{_,_} | _] = C) ->
-    string:join(["`" ++ to_l(K) ++ "`" || {K, _} <- C], ?COMMA);
+    string:join([bt(K) || {K, _} <- C], ?COMMA);
 columns(C) ->
-    string:join(["`" ++ to_l(S) ++ "`"|| S <- C], ?COMMA).
+    string:join([bt(S) || S <- C], ?COMMA).
 
 
-columns_as(C) when C =:= []; C =:= ?STAR ->
+columns_as(C, _Table) when C =:= []; C =:= ?STAR ->
     ?STAR;
-columns_as([{_,_} | _] = C) ->
-    string:join([to_l(K, V) || {K, V} <- C], ?COMMA);
-columns_as(C) ->
-    string:join([to_l(S) || S <- C], ?COMMA).
-
+columns_as(C, Table) ->
+    string:join([as(S, Table) || S <- C], ?COMMA).
+        
 
 defs(Columns) ->
     string:join([?Q || _ <- lists:seq(1, length(Columns))], ?COMMA).
@@ -98,34 +106,71 @@ to_l(B) when is_binary(B) -> binary_to_list(B);
 to_l(I) when is_integer(I) -> integer_to_list(I);
 to_l(L) when is_list(L) -> L.
 
-to_l(K, V) ->
-    to_l(K) ++ ?AS ++ to_l(V).
-
-
-prepare_args(Args) ->
-    [V1 || V1 <- lists:flatten([ fun({_,I})->I;({_,_,I})->I end(V) || V <- Args])].
-
 
 cols([{_,_} | _] = Query) ->
-    string:join(lists:zipwith(fun({K, _}, _I) -> to_l(K) ++ ?ARG end, Query, lists:seq(1, length(Query))), ?COMMA).
+    string:join(lists:zipwith(fun({K, _}, _I) -> bt(K) ++ ?ARG end, Query, lists:seq(1, length(Query))), ?COMMA).
 
 
-where_conditions([]) ->
-    "";
-where_conditions(Selector) when is_list(Selector) ->
-    ReqCols = lists:zipwith(fun({K, V}, _I) ->
-                                    if
-                                        is_list(V) ->
-                                            to_l(K) ++ ?IN ++ ?BKTL ++ defs(V) ++ ?BKTR;
-                                        true ->
-                                            to_l(K) ++ ?ARG
-                                    end;
-                               ({K, C, V}, _I) ->
-                                    if
-                                        is_list(V) ->
-                                            to_l(K) ++ [$ ] ++ to_l(C) ++ [$ ] ++ ?BKTL ++ defs(V) ++ ?BKTR;
-                                        true ->
-                                            to_l(K) ++ [$ ] ++ to_l(C) ++ [$ ] ++ ?Q
-                                    end
-                            end, Selector, lists:seq(1, length(Selector))),
-    ?WHERE ++ string:join(ReqCols, ?AND).
+parse_conditions(Conditions, TableName) ->
+    {Join, Where} = parse_conditions(Conditions, [], []),
+    CompiledJoin = compile_join(Join, TableName),
+    {CompiledWhere, Values} = compile_where(Where, TableName),
+    {CompiledJoin ++ CompiledWhere, Values}.
+parse_conditions([], Join, Where) ->
+    {Join, Where};
+parse_conditions([{Key, {Type, Joiner}}|Rest], Join, Where) when is_atom(Joiner) ->
+    parse_conditions(Rest, [{Key, Type, Joiner}|Join], Where);
+parse_conditions([{Key, {'NOT IN', Values}}|Rest], Join, Where) when is_list(Values) ->
+    parse_conditions(Rest, Join, [{Key, 'NOT IN', Values}|Where]);
+parse_conditions([{Key, {Operator, Value}}|Rest], Join, Where) ->
+    parse_conditions(Rest, Join, [{Key, Operator, Value}|Where]);
+parse_conditions([{Key, true}|Rest], Join, Where) ->
+    parse_conditions(Rest, Join, [{Key, '=', 1}|Where]);
+parse_conditions([{Key, false}|Rest], Join, Where) ->
+    parse_conditions(Rest, Join, [{Key, '=', 0}|Where]);
+parse_conditions([{Key, Joiner}|Rest], Join, Where) when is_atom(Joiner) ->
+    parse_conditions(Rest, [{Key, '', Joiner}|Join], Where);
+parse_conditions([{Key, Values}|Rest], Join, Where) when is_list(Values) ->
+    parse_conditions(Rest, Join, [{Key, 'IN', Values}|Where]);
+parse_conditions([{Key, Value}|Rest], Join, Where) ->
+    parse_conditions(Rest, Join, [{Key, '=', Value}|Where]).
+    
+compile_join(Stack, TableName) ->
+    compile_join(Stack, [], TableName).
+compile_join([], Compiled, _TableName) ->
+    string:join(Compiled,?SPC);
+compile_join([{Key, Type, Joiner}|Rest], Compiled, TableName) ->
+    [Table, Column] = string:tokens(to_l(Joiner),?DOT),
+    Join = to_l(Type) ++ ?JOIN ++ bt(Table) ++ ?ON ++ bt(TableName) ++ ?DOT ++ bt(Key) ++ ?EQ ++ bt(Table) ++ ?DOT ++ bt(Column),
+    compile_join(Rest, [Join|Compiled], TableName).
+
+compile_where(Stack, TableName) ->
+    compile_where(Stack, {[], []}, TableName).
+compile_where([], {[], []}, _TableName) ->
+    {"", []};
+compile_where([], {Compiled,Values}, _TableName) ->
+    {?WHERE ++ string:join(Compiled, ?SPC), lists:reverse(Values)};
+compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
+    {Args, AddValues} = case Value of
+        Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
+        Value -> {?Q, [Value]}
+    end,
+    compile_where(Rest, {[clmn(Key, TableName) ++ spc(Op) ++ Args|Compiled], Values ++ AddValues}, TableName).
+
+
+bt(Word) ->
+    ?BT ++ to_l(Word) ++ ?BT.
+
+spc(Word) ->
+    ?SPC ++ to_l(Word) ++ ?SPC.
+
+clmn(Clmn, DefaultTable) ->
+    case string:tokens(to_l(Clmn),?DOT) of
+        [Column] -> bt(DefaultTable) ++ ?DOT ++ bt(Column);
+        [Table, Column] -> bt(Table) ++ ?DOT ++ bt(Column)
+    end.
+
+as({Column, As}, Table) ->
+    clmn(Column, Table) ++ ?AS ++ bt(As);
+as(Column, Table) ->
+    clmn(Column, Table).
