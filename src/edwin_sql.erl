@@ -149,7 +149,7 @@ compile_where(Stack, TableName) ->
 compile_where([], {[], []}, _TableName) ->
     {"", []};
 compile_where([], {Compiled,Values}, _TableName) ->
-    {?WHERE ++ string:join(Compiled, ?SPC), lists:reverse(Values)};
+    {?WHERE ++ string:join(Compiled, ?AND), lists:reverse(Values)};
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
         Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
@@ -164,11 +164,13 @@ bt(Word) ->
 spc(Word) ->
     ?SPC ++ to_l(Word) ++ ?SPC.
 
-clmn(Clmn, DefaultTable) ->
+clmn(Clmn, DefaultTable) when is_atom(Clmn) ->
     case string:tokens(to_l(Clmn),?DOT) of
         [Column] -> bt(DefaultTable) ++ ?DOT ++ bt(Column);
         [Table, Column] -> bt(Table) ++ ?DOT ++ bt(Column)
-    end.
+    end;
+clmn(AsIs, _DefaultTable) when is_list(AsIs) ->
+    AsIs.   
 
 as({Column, As}, Table) ->
     clmn(Column, Table) ++ ?AS ++ bt(As);
