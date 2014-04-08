@@ -1,11 +1,12 @@
 {application, edwin,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Erlang database helper"},
+  {vsn, "1.1.0"},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  emysql
                  ]},
   {mod, { edwin_app, []}},
   {env, []}
