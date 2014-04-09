@@ -170,7 +170,7 @@ clmn(Clmn, DefaultTable) when is_atom(Clmn) ->
         [Table, Column] -> bt(Table) ++ ?DOT ++ bt(Column)
     end;
 clmn(AsIs, _DefaultTable) ->
-    AsIs.   
+    to_l(AsIs).   
 
 as({Column, As}, Table) ->
     clmn(Column, Table) ++ ?AS ++ bt(As);
