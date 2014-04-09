@@ -152,6 +152,9 @@ compile_where([], {Compiled,Values}, _TableName) ->
     {?WHERE ++ string:join(Compiled, ?AND), lists:reverse(Values)};
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
+        {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), Params};
+        {{Inline, Param}} -> {to_l(Inline), [Param]};
+        {Inline}  -> {to_l(Inline), []};
         Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
         Value -> {?Q, [Value]}
     end,
