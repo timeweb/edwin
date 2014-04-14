@@ -102,9 +102,9 @@ execute(Pool, SQL) ->
 
 
 result(List) when length(List) =:= 1 ->
-    maps:from_list(lists:flatten(List));
+    maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- lists:flatten(List)]);
 result(List) ->
-    [maps:from_list(P) || P <- List].
+    [maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- P]) || P <- List].
 
 
 random_atom(Len) ->
