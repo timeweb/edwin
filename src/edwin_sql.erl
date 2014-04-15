@@ -45,8 +45,9 @@ select(Table, Columns, Where) ->
 
 update(Table, Args, Where) ->
     {Conditions, WhereArgs} = parse_conditions(Where, Table),
-    SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ cols(Args) ++ Conditions,
-    {SQL, ?DATA(Args) ++ WhereArgs}.
+    {Cols, UpdateArgs} = cols(Args, Table),
+    SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ Cols ++ Conditions,
+    {SQL, UpdateArgs ++ WhereArgs}.
 
 
 delete(Table, Where) ->
@@ -107,9 +108,19 @@ to_l(I) when is_integer(I) -> integer_to_list(I);
 to_l(L) when is_list(L) -> L.
 
 
-cols([{_,_} | _] = Query) ->
-    string:join(lists:zipwith(fun({K, _}, _I) -> bt(K) ++ ?ARG end, Query, lists:seq(1, length(Query))), ?COMMA).
-
+cols(Query, TableName) ->
+   cols(Query, {[], []}, TableName).
+cols([], {Compiled, Values}, _TableName) ->
+   {string:join(lists:reverse(Compiled), ?COMMA), lists:reverse(Values)};
+cols([{Key, {{AsIs, Params}}}|Rest], {Compiled, Values}, TableName) when is_list(Params) ->
+    cols(Rest, {[clmn(Key, TableName) ++ ?EQ ++ to_l(AsIs)|Compiled], lists:reverse(Params) ++ Values}, TableName);
+cols([{Key, {{AsIs, Param}}}|Rest], {Compiled, Values}, TableName) ->
+    cols(Rest, {[clmn(Key, TableName) ++ ?EQ ++ to_l(AsIs)|Compiled], [Param|Values]}, TableName);
+cols([{Key, {AsIs}}|Rest], {Compiled, Values}, TableName) ->
+    cols(Rest, {[clmn(Key, TableName) ++ ?EQ ++ to_l(AsIs)|Compiled], Values}, TableName);
+cols([{Key, Value}|Rest], {Compiled, Values}, TableName) ->
+    cols(Rest, {[clmn(Key, TableName) ++ ?ARG|Compiled], [Value|Values]}, TableName).
+    
 
 parse_conditions(Conditions, TableName) ->
     {Join, Where} = parse_conditions(Conditions, [], []),
@@ -152,7 +163,7 @@ compile_where([], {Compiled,Values}, _TableName) ->
     {?WHERE ++ string:join(Compiled, ?AND), lists:reverse(Values)};
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
-        {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), Params};
+        {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
         {{Inline, Param}} -> {to_l(Inline), [Param]};
         {Inline}  -> {to_l(Inline), []};
         Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
