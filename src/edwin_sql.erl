@@ -111,7 +111,7 @@ to_l(L) when is_list(L) -> L.
 cols(Query, TableName) ->
    cols(Query, {[], []}, TableName).
 cols([], {Compiled, Values}, _TableName) ->
-   {string:join(lists:reverse(Compiled), ?COMMA), lists:reverse(Values)};
+   {string:join(lists:reverse(Compiled), ?COMMA), lists:map(fun v/1, lists:reverse(Values))};
 cols([{Key, {{AsIs, Params}}}|Rest], {Compiled, Values}, TableName) when is_list(Params) ->
     cols(Rest, {[clmn(Key, TableName) ++ ?EQ ++ to_l(AsIs)|Compiled], lists:reverse(Params) ++ Values}, TableName);
 cols([{Key, {{AsIs, Param}}}|Rest], {Compiled, Values}, TableName) ->
@@ -139,6 +139,8 @@ parse_conditions([{Key, true}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, '=', 1}|Where]);
 parse_conditions([{Key, false}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, '=', 0}|Where]);
+parse_conditions([{Key, null}|Rest], Join, Where) ->
+    parse_conditions(Rest, Join, [{Key, 'IS', <<"NULL">>}|Where]);
 parse_conditions([{Key, Joiner}|Rest], Join, Where) when is_atom(Joiner) ->
     parse_conditions(Rest, [{Key, '', Joiner}|Join], Where);
 parse_conditions([{Key, Values}|Rest], Join, Where) when is_list(Values) ->
@@ -190,3 +192,12 @@ as({Column, As}, Table) ->
     clmn(Column, Table) ++ ?AS ++ bt(As);
 as(Column, Table) ->
     clmn(Column, Table).
+
+v(true) ->
+    1;
+v(false) ->
+    0;
+v(null) ->
+    <<"NULL">>;
+v(Value) ->
+    Value.
