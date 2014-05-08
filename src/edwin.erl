@@ -2,11 +2,13 @@
 
 -include_lib("emysql/include/emysql.hrl").
 
--export([select/3]).
 -export([select/2]).
+-export([select/3]).
 -export([select/4]).
+-export([select/5]).
 -export([update/3]).
 -export([update/4]).
+-export([update/5]).
 -export([insert/3]).
 -export([delete/2]).
 -export([delete/3]).
@@ -22,14 +24,16 @@ select(Pool, Table) ->
 
 select(Pool, Table, Columns) when is_list(Columns) ->
     select(Pool, Table, Columns, #{});
-select(Pool, Table, Columns) when is_integer(Columns) ->
-    select(Pool, Table, [], Columns).
+select(Pool, Table, Where) when is_integer(Where) ->
+    select(Pool, Table, [], Where).
 
 select(Pool, Table, Columns, Where) when is_integer(Where) ->
     select(Pool, Table, Columns, #{ id => Where });
-
 select(Pool, Table, Columns, Where) when is_map(Where) ->
-    {SQL, Data} = edwin_sql:select(Table, Columns, maps:to_list(Where)),
+    select(Pool, Table, Columns, Where, #{}).
+
+select(Pool, Table, Columns, Where, Opts) when is_map(Where), is_map(Opts) ->
+    {SQL, Data} = edwin_sql:select(Table, Columns, maps:to_list(Where), maps:to_list(Opts)),
     ex(Pool, SQL, Data).
 
 
@@ -37,8 +41,10 @@ update(Pool, Table, Args) ->
     update(Pool, Table, Args, #{}).
 update(Pool, Table, Args, Where) when is_integer(Where) ->
     update(Pool, Table, Args, #{ id => Where });
-update(Pool, Table, Args, Where) when is_map(Where), is_map(Args) ->
-    {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where)),
+update(Pool, Table, Args, Where) ->
+    update(Pool, Table, Args, Where, #{}).
+update(Pool, Table, Args, Where, Opts) when is_map(Where), is_map(Args), is_map(Opts) ->
+    {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where), maps:to_list(Opts)),
     ex(Pool, SQL, Data).
 
 
