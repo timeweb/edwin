@@ -1,7 +1,7 @@
 -module(edwin_sql).
 
--export([select/3]).
--export([update/3]).
+-export([select/4]).
+-export([update/4]).
 -export([delete/2]).
 -export([insert/2]).
 -export([call/2]).
@@ -36,17 +36,25 @@
 -define(DOT, ".").
 -define(CMA, ",").
 -define(CMAS, ", ").
+-define(ORDER, " ORDER BY ").
+-define(DESC, " DESC ").
+-define(ASC, " ASC ").
+-define(GROUP, " GROUP BY ").
+-define(LIMIT, " LIMIT ").
+-define(OFFSET, " OFFSET ").
 
-select(Table, Columns, Where) ->
+select(Table, Columns, Where, Opts) ->
     {Conditions, Args} = parse_conditions(Where, Table),
-    SQL= ?SELECT ++ columns_as(Columns, Table) ++ ?FROM ++ bt(Table) ++ Conditions,
+    Options = make_opts(Opts, Table),
+    SQL= ?SELECT ++ columns_as(Columns, Table) ++ ?FROM ++ bt(Table) ++ Conditions ++ Options,
     {SQL, Args}.
 
 
-update(Table, Args, Where) ->
+update(Table, Args, Where, Opts) ->
     {Conditions, WhereArgs} = parse_conditions(Where, Table),
     {Cols, UpdateArgs} = cols(Args, Table),
-    SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ Cols ++ Conditions,
+    Options = make_opts(Opts, Table), 
+    SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ Cols ++ Conditions ++ Options,
     {SQL, UpdateArgs ++ WhereArgs}.
 
 
@@ -172,6 +180,25 @@ compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
         Value -> {?Q, [Value]}
     end,
     compile_where(Rest, {[clmn(Key, TableName) ++ spc(Op) ++ Args|Compiled], Values ++ AddValues}, TableName).
+
+make_opts(Opts, DefaultTable) ->
+    Result = case proplists:get_value(group, Opts) of
+        undefined -> "";
+        Group -> ?GROUP ++ clmn(Group, DefaultTable)
+    end,
+    Result1 = case proplists:get_value(order, Opts) of
+        undefined -> Result;
+        Order -> Result ++ ?ORDER ++ clmn(Order, DefaultTable)
+    end,
+    Result2 = case proplists:get_value(limit, Opts) of
+        undefined -> Result1;
+        Limit -> Result1 ++ ?LIMIT ++ integer_to_list(Limit)
+    end,
+    Result3 = case proplists:get_value(offset, Opts) of
+        undefined -> Result2;
+        Offset -> Result2 ++ ?OFFSET ++ integer_to_list(Offset)
+    end,
+    Result3.
 
 
 bt(Word) ->
