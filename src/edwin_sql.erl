@@ -162,7 +162,7 @@ compile_join([], Compiled, _TableName) ->
     string:join(Compiled,?SPC);
 compile_join([{Key, Type, Joiner}|Rest], Compiled, TableName) ->
     [Table, Column] = string:tokens(to_l(Joiner),?DOT),
-    Join = to_l(Type) ++ ?JOIN ++ bt(Table) ++ ?ON ++ bt(TableName) ++ ?DOT ++ bt(Key) ++ ?EQ ++ bt(Table) ++ ?DOT ++ bt(Column),
+    Join = to_l(Type) ++ ?JOIN ++ bt(Table) ++ ?ON ++ clmn(Key, TableName) ++ ?EQ ++ bt(Table) ++ ?DOT ++ bt(Column),
     compile_join(Rest, [Join|Compiled], TableName).
 
 compile_where(Stack, TableName) ->
