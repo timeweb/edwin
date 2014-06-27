@@ -77,8 +77,8 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
     try
         ex(emysql:execute(Pool, StmtName, Data))
     catch
-        exit:{Reason, _} ->
-            {error, Reason}
+        exit:{{Status, Msg}, _} ->
+            erlang:error({edwin_error, #{status => Status, msg => Msg}})
     end.
 
 ex(#ok_packet{insert_id = 0, affected_rows = AffectedRows}) ->
@@ -88,7 +88,8 @@ ex(#ok_packet{insert_id = Id}) ->
 ex(#result_packet{} = Result) ->
     result(emysql_util:as_json(Result));
 ex(#error_packet{} = Reason) ->
-    {error, Reason};
+    erlang:error({edwin_error, #{status => Reason#error_packet.status,
+                                 msg => Reason#error_packet.msg}});
 ex(Result) ->
     Result.
 
