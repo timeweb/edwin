@@ -148,7 +148,9 @@ parse_conditions([{Key, true}|Rest], Join, Where) ->
 parse_conditions([{Key, false}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, '=', 0}|Where]);
 parse_conditions([{Key, null}|Rest], Join, Where) ->
-    parse_conditions(Rest, Join, [{Key, 'IS', <<"NULL">>}|Where]);
+    parse_conditions(Rest, Join, [{Key, 'IS', {<<"NULL">>}}|Where]);
+parse_conditions([{Key, not_null}|Rest], Join, Where) ->
+    parse_conditions(Rest, Join, [{Key, 'IS', {<<"NOT NULL">>}}|Where]);
 parse_conditions([{Key, Joiner}|Rest], Join, Where) when is_atom(Joiner) ->
     parse_conditions(Rest, [{Key, '', Joiner}|Join], Where);
 parse_conditions([{Key, Values}|Rest], Join, Where) when is_list(Values) ->
