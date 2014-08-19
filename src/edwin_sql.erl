@@ -190,6 +190,11 @@ make_opts(Opts, DefaultTable) ->
     end,
     Result1 = case proplists:get_value(order, Opts) of
         undefined -> Result;
+        {Order, Direction} ->
+            case Direction of
+                asc -> Result ++ ?ORDER ++ clmn(Order, DefaultTable) ++ " ASC";
+                desc -> Result ++ ?ORDER ++ clmn(Order, DefaultTable) ++ " DESC"
+            end;
         Order -> Result ++ ?ORDER ++ clmn(Order, DefaultTable)
     end,
     Result2 = case proplists:get_value(limit, Opts) of
