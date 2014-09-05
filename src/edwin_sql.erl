@@ -194,6 +194,8 @@ make_opts(Opts, DefaultTable) ->
     end,
     Result1 = case proplists:get_value(order, Opts) of
         undefined -> Result;
+        {TableName, Order, Direction} ->
+            make_opts(maps:to_list(#{order => {Order, Direction}}), TableName);
         {Order, Direction} ->
             case Direction of
                 asc -> Result ++ ?ORDER ++ clmn(Order, DefaultTable) ++ " ASC";
