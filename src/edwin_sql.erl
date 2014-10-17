@@ -143,6 +143,8 @@ parse_conditions([{Key, {'NOT IN', Values}}|Rest], Join, Where) when is_list(Val
     parse_conditions(Rest, Join, [{Key, 'NOT IN', Values}|Where]);
 parse_conditions([{Key, {Operator, Value}}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, Operator, Value}|Where]);
+parse_conditions([{Key, {between, Values}}|Rest], Join, Where) when is_list(Values) ->
+  parse_conditions(Rest, Join, [{Key, between, Values}|Where]);
 parse_conditions([{Key, true}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, '=', 1}|Where]);
 parse_conditions([{Key, false}|Rest], Join, Where) ->
@@ -183,6 +185,7 @@ compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
         {{Inline, Param}} -> {to_l(Inline), [Param]};
         {Inline}  -> {to_l(Inline), []};
         Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
+	Value when is_list(Value), Op =:= between -> {?Q ++ ?AND ++ ?Q, lists:reverse(Value)};
         Value -> {?Q, [Value]}
     end,
     compile_where(Rest, {[clmn(Key, TableName) ++ spc(Op) ++ Args|Compiled], Values ++ AddValues}, TableName).
