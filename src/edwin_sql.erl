@@ -184,8 +184,8 @@ compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
         {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
         {{Inline, Param}} -> {to_l(Inline), [Param]};
         {Inline}  -> {to_l(Inline), []};
-        Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
 	Value when is_list(Value), Op =:= between -> {?Q ++ ?AND ++ ?Q, lists:reverse(Value)};
+        Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
         Value -> {?Q, [Value]}
     end,
     compile_where(Rest, {[clmn(Key, TableName) ++ spc(Op) ++ Args|Compiled], Values ++ AddValues}, TableName).
