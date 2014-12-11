@@ -24,6 +24,7 @@
 -define(STAR, "*").
 -define(WHERE, " WHERE ").
 -define(AND, " AND ").
+-define(OR, " OR ").
 -define(IN, " IN ").
 -define(DATA(P), [V || {_,V} <- P]).
 -define(CALL, "CALL ").
@@ -141,6 +142,9 @@ parse_conditions([{Key, {Type, Joiner}}|Rest], Join, Where) when is_atom(Joiner)
     parse_conditions(Rest, [{Key, Type, Joiner}|Join], Where);
 parse_conditions([{Key, {'NOT IN', Values}}|Rest], Join, Where) when is_list(Values) ->
     parse_conditions(Rest, Join, [{Key, 'NOT IN', Values}|Where]);
+parse_conditions([{'any equal', {Keys, Value}}|Rest], Join, Where) when is_list(Keys) ->
+    ConditionList = [{atom_to_list(Key), Value} || Key <- Keys],
+    parse_conditions(Rest, Join, [{'any equal', ConditionList}|Where]);
 parse_conditions([{Key, {Operator, Value}}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, Operator, Value}|Where]);
 parse_conditions([{Key, {between, Values}}|Rest], Join, Where) when is_list(Values) ->
@@ -179,12 +183,20 @@ compile_where([], {[], []}, _TableName) ->
     {"", []};
 compile_where([], {Compiled,Values}, _TableName) ->
     {?WHERE ++ string:join(Compiled, ?AND), lists:reverse(Values)};
+compile_where([{Operation, Statements}|Rest], {Compiled, _Values}, TableName) ->
+    {FieldStatement, ValueList} = case Operation of
+        'any equal' ->
+            FieldList = [Field ++ ?EQ ++ ?Q || {Field, _Value} <- Statements],
+            ValueList = [Value || {_Field, Value} <- Statements],
+            {string:join(FieldList, ?OR), ValueList}
+    end,
+    compile_where(Rest, {[FieldStatement |Compiled], ValueList}, TableName);
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
         {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
         {{Inline, Param}} -> {to_l(Inline), [Param]};
         {Inline}  -> {to_l(Inline), []};
-	Value when is_list(Value), Op =:= between -> {?Q ++ ?AND ++ ?Q, lists:reverse(Value)};
+        Value when is_list(Value), Op =:= between -> {?Q ++ ?AND ++ ?Q, lists:reverse(Value)};
         Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
         Value -> {?Q, [Value]}
     end,
