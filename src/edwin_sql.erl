@@ -183,14 +183,14 @@ compile_where([], {[], []}, _TableName) ->
     {"", []};
 compile_where([], {Compiled,Values}, _TableName) ->
     {?WHERE ++ string:join(Compiled, ?AND), lists:reverse(Values)};
-compile_where([{Operation, Statements}|Rest], {Compiled, _Values}, TableName) ->
+compile_where([{Operation, Statements}|Rest], {Compiled, Values}, TableName) ->
     {FieldStatement, ValueList} = case Operation of
         'any equal' ->
             FieldList = [Field ++ ?EQ ++ ?Q || {Field, _Value} <- Statements],
             ValueList = [Value || {_Field, Value} <- Statements],
-            {string:join(FieldList, ?OR), ValueList}
+            {"(" ++ string:join(FieldList, ?OR) ++ ")", ValueList}
     end,
-    compile_where(Rest, {[FieldStatement |Compiled], ValueList}, TableName);
+    compile_where(Rest, {[FieldStatement |Compiled], [Values|ValueList]}, TableName);
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
         {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
