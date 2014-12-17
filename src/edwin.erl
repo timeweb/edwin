@@ -78,7 +78,9 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
         ex(emysql:execute(Pool, StmtName, Data))
     catch
         exit:{{Status, Msg}, _} ->
-            erlang:error({edwin_error, #{status => Status, msg => Msg}})
+            erlang:error({edwin_error, #{status => Status, msg => Msg}});
+        exit:pool_not_found ->
+            erlang:error({error, #{msg => lists:flatten(io_lib:format("unknown pool `~s`.", [Pool]))}})
     end.
 
 ex(#ok_packet{insert_id = 0, affected_rows = AffectedRows}) ->
