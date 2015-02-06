@@ -4,7 +4,7 @@
 
 -export([select/2]).
 -export([select/3]).
--export([select/4]).
+-export([select/4, select_list/4]).
 -export([select/5]).
 -export([update/3]).
 -export([update/4]).
@@ -36,6 +36,11 @@ select(Pool, Table, Columns, Where, Opts) when is_map(Where), is_map(Opts) ->
     {SQL, Data} = edwin_sql:select(Table, Columns, maps:to_list(Where), maps:to_list(Opts)),
     ex(Pool, SQL, Data).
 
+select_list(Pool, Table, Columns, Where) ->
+  case select(Pool, Table, Columns, Where) of
+    Result when is_map(Result) -> [Result];
+    Result -> Result
+  end.
 
 update(Pool, Table, Args) ->
     update(Pool, Table, Args, #{}).
