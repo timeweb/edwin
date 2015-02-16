@@ -5,7 +5,7 @@
 -export([select/2]).
 -export([select/3]).
 -export([select/4, select_list/4]).
--export([select/5]).
+-export([select/5, select_list/5]).
 -export([update/3]).
 -export([update/4]).
 -export([update/5]).
@@ -38,6 +38,12 @@ select(Pool, Table, Columns, Where, Opts) when is_map(Where), is_map(Opts) ->
 
 select_list(Pool, Table, Columns, Where) ->
   case select(Pool, Table, Columns, Where) of
+    Result when is_map(Result) -> [Result];
+    Result -> Result
+  end.
+
+select_list(Pool, Table, Columns, Where, Opts) ->
+  case select(Pool, Table, Columns, Where, Opts) of
     Result when is_map(Result) -> [Result];
     Result -> Result
   end.
