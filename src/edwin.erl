@@ -3,7 +3,7 @@
 -include_lib("emysql/include/emysql.hrl").
 
 -export([select/2]).
--export([select/3]).
+-export([select/3, select_list/3]).
 -export([select/4, select_list/4]).
 -export([select/5, select_list/5]).
 -export([update/3]).
@@ -20,116 +20,118 @@
 
 
 select(Pool, Table) ->
-    select(Pool, Table, []).
+  select(Pool, Table, []).
 
 select(Pool, Table, Columns) when is_list(Columns) ->
-    select(Pool, Table, Columns, #{});
+  select(Pool, Table, Columns, #{});
 select(Pool, Table, Where) when is_integer(Where) ->
-    select(Pool, Table, [], Where).
+  select(Pool, Table, [], Where).
 
 select(Pool, Table, Columns, Where) when is_integer(Where) ->
-    select(Pool, Table, Columns, #{ id => Where });
+  select(Pool, Table, Columns, #{ id => Where });
 select(Pool, Table, Columns, Where) when is_map(Where) ->
-    select(Pool, Table, Columns, Where, #{}).
+  select(Pool, Table, Columns, Where, #{}).
 
 select(Pool, Table, Columns, Where, Opts) when is_map(Where), is_map(Opts) ->
-    {SQL, Data} = edwin_sql:select(Table, Columns, maps:to_list(Where), maps:to_list(Opts)),
-    ex(Pool, SQL, Data).
+  {SQL, Data} = edwin_sql:select(Table, Columns, maps:to_list(Where), maps:to_list(Opts)),
+  ex(Pool, SQL, Data).
+
+select_list(Pool, Table, Columns) ->
+  select_list(select(Pool, Table, Columns)).
 
 select_list(Pool, Table, Columns, Where) ->
-  case select(Pool, Table, Columns, Where) of
-    Result when is_map(Result) -> [Result];
-    Result -> Result
-  end.
+  select_list(select(Pool, Table, Columns, Where)).
 
 select_list(Pool, Table, Columns, Where, Opts) ->
-  case select(Pool, Table, Columns, Where, Opts) of
-    Result when is_map(Result) -> [Result];
-    Result -> Result
-  end.
+  select_list(select(Pool, Table, Columns, Where, Opts)).
+
+select_list(Data) when is_map(Data) ->
+  [Data];
+select_list(Data) ->
+  Data.
 
 update(Pool, Table, Args) ->
-    update(Pool, Table, Args, #{}).
+  update(Pool, Table, Args, #{}).
 update(Pool, Table, Args, Where) when is_integer(Where) ->
-    update(Pool, Table, Args, #{ id => Where });
+  update(Pool, Table, Args, #{ id => Where });
 update(Pool, Table, Args, Where) ->
-    update(Pool, Table, Args, Where, #{}).
+  update(Pool, Table, Args, Where, #{}).
 update(Pool, Table, Args, Where, Opts) when is_map(Where), is_map(Args), is_map(Opts) ->
-    {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where), maps:to_list(Opts)),
-    ex(Pool, SQL, Data).
+  {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where), maps:to_list(Opts)),
+  ex(Pool, SQL, Data).
 
 
 insert(Pool, Table, Values) when is_atom(Table), is_map(Values) ->
-    {SQL, Data} = edwin_sql:insert(Table, maps:to_list(Values)),
-    ex(Pool, SQL, Data).
+  {SQL, Data} = edwin_sql:insert(Table, maps:to_list(Values)),
+  ex(Pool, SQL, Data).
 
 
 delete(Pool, Table) ->
-    delete(Pool, Table, #{}).
+  delete(Pool, Table, #{}).
 delete(Pool, Table, Where) when is_integer(Where) ->
-    delete(Pool, Table, #{ id => Where });
+  delete(Pool, Table, #{ id => Where });
 delete(Pool, Table, Where) when is_map(Where) ->
-    {SQL, Data} = edwin_sql:delete(Table, maps:to_list(Where)),
-    ex(Pool, SQL, Data).
+  {SQL, Data} = edwin_sql:delete(Table, maps:to_list(Where)),
+  ex(Pool, SQL, Data).
 
 
 ex(Pool, SQL) ->
-    ex(Pool, SQL, []).
+  ex(Pool, SQL, []).
 ex(Pool, SQL, Data) when is_atom(Pool)->
-    StmtName = case edwin_st:get_stmt(SQL) of
-                   null ->
-                       StmtNew = random_atom(10),
-                       emysql:prepare(StmtNew, SQL),
-                       edwin_st:set_stmt(StmtNew, SQL),
-                       StmtNew;
-                   Stmt when is_atom(Stmt) ->
-                       Stmt
-               end,
-    try
-        ex(emysql:execute(Pool, StmtName, Data))
-    catch
-        exit:{{Status, Msg}, _} ->
-            erlang:error({edwin_error, #{status => Status, msg => Msg}});
-        exit:pool_not_found ->
-            erlang:error({error, #{msg => lists:flatten(io_lib:format("unknown pool `~s`.", [Pool]))}})
-    end.
+  StmtName = case edwin_st:get_stmt(SQL) of
+               null ->
+                 StmtNew = random_atom(10),
+                 emysql:prepare(StmtNew, SQL),
+                 edwin_st:set_stmt(StmtNew, SQL),
+                 StmtNew;
+               Stmt when is_atom(Stmt) ->
+                 Stmt
+             end,
+  try
+    ex(emysql:execute(Pool, StmtName, Data))
+  catch
+    exit:{{Status, Msg}, _} ->
+      erlang:error({edwin_error, #{status => Status, msg => Msg}});
+    exit:pool_not_found ->
+      erlang:error({error, #{msg => lists:flatten(io_lib:format("unknown pool `~s`.", [Pool]))}})
+  end.
 
 ex(#ok_packet{insert_id = 0, affected_rows = AffectedRows}) ->
-    {ok, AffectedRows};
+  {ok, AffectedRows};
 ex(#ok_packet{insert_id = Id}) ->
-    {ok, Id};
+  {ok, Id};
 ex(#result_packet{} = Result) ->
-    result(emysql_util:as_json(Result));
+  result(emysql_util:as_json(Result));
 ex(#error_packet{} = Reason) ->
-    erlang:error({edwin_error, #{status => Reason#error_packet.status,
-                                 msg => Reason#error_packet.msg}});
+  erlang:error({edwin_error, #{status => Reason#error_packet.status,
+    msg => Reason#error_packet.msg}});
 ex(Result) ->
-    Result.
+  Result.
 
 
 call(Pool, Proc, Args) ->
-    SQL = edwin_sql:call(Proc, Args),
-    execute(Pool, SQL).
+  SQL = edwin_sql:call(Proc, Args),
+  execute(Pool, SQL).
 
 
 fn(Pool, Fun, Args) ->
-    SQL = edwin_sql:fn(Fun, Args),
-    ex(Pool, SQL, Args).
+  SQL = edwin_sql:fn(Fun, Args),
+  ex(Pool, SQL, Args).
 
 
 execute(Pool, SQL) ->
-    ex(emysql:execute(Pool, SQL)).
+  ex(emysql:execute(Pool, SQL)).
 
 
 result(List) when length(List) =:= 1 ->
-    maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- lists:flatten(List)]);
+  maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- lists:flatten(List)]);
 result(List) ->
-    [maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- P]) || P <- List].
+  [maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- P]) || P <- List].
 
 
 random_atom(Len) ->
-    Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
-    ChrsSize = size(Chrs),
-    F = fun(_, R) ->
-                [element(crypto:rand_uniform(Len, ChrsSize), Chrs) | R] end,
-    list_to_atom(lists:foldl(F, "", lists:seq(1, Len))).
+  Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
+  ChrsSize = size(Chrs),
+  F = fun(_, R) ->
+    [element(crypto:rand_uniform(Len, ChrsSize), Chrs) | R] end,
+  list_to_atom(lists:foldl(F, "", lists:seq(1, Len))).
