@@ -190,7 +190,7 @@ compile_where([{Operation, Statements}|Rest], {Compiled, Values}, TableName) ->
             ValueList = [Value || {_Field, Value} <- Statements],
             {"(" ++ string:join(FieldList, ?OR) ++ ")", ValueList}
     end,
-    compile_where(Rest, {[FieldStatement |Compiled], [Values|ValueList]}, TableName);
+    compile_where(Rest, {[FieldStatement|Compiled], lists:append(Values, ValueList)}, TableName);
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
         {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
