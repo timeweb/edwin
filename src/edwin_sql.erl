@@ -2,6 +2,7 @@
 
 -export([select/4]).
 -export([update/4]).
+-export([replace/2]).
 -export([delete/2]).
 -export([insert/2]).
 -export([call/2]).
@@ -12,6 +13,7 @@
 -define(Q, "?").
 -define(SELECT, "SELECT ").
 -define(UPDATE, "UPDATE ").
+-define(REPLACE, "REPLACE ").
 -define(INSERT, "INSERT INTO ").
 -define(FROM, " FROM ").
 -define(DELETE, "DELETE FROM ").
@@ -58,6 +60,10 @@ update(Table, Args, Where, Opts) ->
     SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ Cols ++ Conditions ++ Options,
     {SQL, UpdateArgs ++ WhereArgs}.
 
+replace(Table, Args) ->
+    Args1 = [{K, V} || {K, V} <- Args, V =/= undefined],
+    SQL = ?REPLACE ++ to_l(Table) ++ ?BKTLS ++ columns(Args) ++ ?VALS ++ defs(Args) ++ ?BKTR,
+    {SQL, ?DATA(Args1)}.
 
 delete(Table, Where) ->
     {Conditions, Args} = parse_conditions(Where, Table),

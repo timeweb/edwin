@@ -9,6 +9,7 @@
 -export([update/3]).
 -export([update/4]).
 -export([update/5]).
+-export([replace/3]).
 -export([insert/3]).
 -export([delete/2]).
 -export([delete/3]).
@@ -60,6 +61,9 @@ update(Pool, Table, Args, Where, Opts) when is_map(Where), is_map(Args), is_map(
   {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where), maps:to_list(Opts)),
   ex(Pool, SQL, Data).
 
+replace(Pool, Table, Values) ->
+  {SQL, Data} = edwin_sql:replace(Table, maps:to_list(Values)),
+  ex(Pool, SQL, Data).
 
 insert(Pool, Table, Values) when is_atom(Table), is_map(Values) ->
   {SQL, Data} = edwin_sql:insert(Table, maps:to_list(Values)),
