@@ -13,6 +13,7 @@
 -export([insert/3]).
 -export([delete/2]).
 -export([delete/3]).
+-export([multipleDelete/3]).
 -export([ex/3]).
 -export([ex/2]).
 -export([execute/2]).
@@ -78,6 +79,9 @@ delete(Pool, Table, Where) when is_map(Where) ->
   {SQL, Data} = edwin_sql:delete(Table, maps:to_list(Where)),
   ex(Pool, SQL, Data).
 
+multipleDelete(Pool, Tables, Where) ->
+  {SQL, Data} = edwin_sql:multipleDelete(Tables, maps:to_list(Where)),
+  ex(Pool, SQL, Data).
 
 ex(Pool, SQL) ->
   ex(Pool, SQL, []).

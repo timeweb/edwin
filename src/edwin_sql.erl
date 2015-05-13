@@ -4,6 +4,7 @@
 -export([update/4]).
 -export([replace/2]).
 -export([delete/2]).
+-export([multipleDelete/2]).
 -export([insert/2]).
 -export([call/2]).
 -export([fn/2]).
@@ -17,6 +18,7 @@
 -define(INSERT, "INSERT INTO ").
 -define(FROM, " FROM ").
 -define(DELETE, "DELETE FROM ").
+-define(MULTIPLE_DELETE, "DELETE ").
 -define(SET, " SET ").
 -define(VALS, ") VALUES (").
 -define(BKTLS, " (").
@@ -70,6 +72,11 @@ delete(Table, Where) ->
     SQL = ?DELETE ++ bt(Table) ++ Conditions,
     {SQL, Args}.
 
+multipleDelete([Table | _JoinedTables] = Tables, Where) ->
+    {Conditions, Args} = parse_conditions(Where, Table),
+    TableList = [bt(Tbl) || Tbl <- Tables],
+    SQL = io_lib:format(<<"~s~s~s~s~s">>, [?MULTIPLE_DELETE, string:join(TableList, ?COMMA), ?FROM, Table, Conditions]),
+    {SQL, Args}.
 
 insert(Table, Args) ->
     Args1 = [{K, V} || {K, V} <- Args, V =/= undefined],
