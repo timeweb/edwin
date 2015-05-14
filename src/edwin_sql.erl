@@ -201,8 +201,13 @@ compile_where([{Operation, Statements}|Rest], {Compiled, Values}, TableName) ->
         'any equal' ->
             FieldList = [Field ++ ?EQ ++ ?Q || {Field, _Value} <- Statements],
             ValueList = [Value || {_Field, Value} <- Statements],
-            {"(" ++ string:join(FieldList, ?OR) ++ ")", ValueList}
+            {?BKTL ++ string:join(FieldList, ?OR) ++ ?BKTR, ValueList}
     end,
+    compile_where(Rest, {[FieldStatement|Compiled], lists:append(Values, ValueList)}, TableName);
+compile_where([{Key, 'OR', Statements}|Rest], {Compiled, Values}, TableName) ->
+    CondList = [clmn(Key, TableName) ++ Op ++ ?Q || {Op, _Value} <- Statements],
+    ValueList = lists:reverse([Value || {_Op, Value} <- Statements]),
+    FieldStatement = ?BKTL ++ string:join(CondList, ?OR) ++ ?BKTR,
     compile_where(Rest, {[FieldStatement|Compiled], lists:append(Values, ValueList)}, TableName);
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
