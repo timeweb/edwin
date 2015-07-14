@@ -46,6 +46,7 @@
 -define(DESC, " DESC ").
 -define(ASC, " ASC ").
 -define(GROUP, " GROUP BY ").
+-define(HAVING, " HAVING ").
 -define(LIMIT, " LIMIT ").
 -define(OFFSET, " OFFSET ").
 
@@ -159,10 +160,10 @@ parse_conditions([{Key, {'NOT IN', Values}}|Rest], Join, Where) when is_list(Val
 parse_conditions([{Operation, {Keys, Value}}|Rest], Join, Where) when Operation =:= 'any equal'; Operation =:= like ->
     ConditionList = [{atom_to_list(Key), Value} || Key <- Keys],
     parse_conditions(Rest, Join, [{Operation, ConditionList}|Where]);
+parse_conditions([{Key, {between, Values}}|Rest], Join, Where) when is_list(Values) ->
+    parse_conditions(Rest, Join, [{Key, between, Values}|Where]);
 parse_conditions([{Key, {Operator, Value}}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, Operator, Value}|Where]);
-parse_conditions([{Key, {between, Values}}|Rest], Join, Where) when is_list(Values) ->
-  parse_conditions(Rest, Join, [{Key, between, Values}|Where]);
 parse_conditions([{Key, true}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, '=', 1}|Where]);
 parse_conditions([{Key, false}|Rest], Join, Where) ->
@@ -224,31 +225,48 @@ compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     compile_where(Rest, {[clmn(Key, TableName) ++ spc(Op) ++ Args|Compiled], Values ++ AddValues}, TableName).
 
 make_opts(Opts, DefaultTable) ->
-    Result = case proplists:get_value(group, Opts) of
+    group_opts(Opts, DefaultTable) ++
+        having_opts(Opts) ++
+        order_opts(Opts, DefaultTable) ++
+        limit_opts(Opts) ++
+        offset_opts(Opts).
+
+group_opts(Opts, Table) ->
+    case proplists:get_value(group, Opts) of
         undefined -> "";
-        Group -> ?GROUP ++ clmn(Group, DefaultTable)
-    end,
-    Result1 = case proplists:get_value(order, Opts) of
-        undefined -> Result;
+        Group -> ?GROUP ++ clmn(Group, Table)
+    end.
+
+having_opts(Opts) ->
+    case proplists:get_value(having, Opts) of
+        Having when is_binary(Having) -> ?HAVING ++ to_l(Having);
+        _ -> ""
+    end.
+
+order_opts(Opts, Table) ->
+    case proplists:get_value(order, Opts) of
+        undefined -> "";
         {TableName, Order, Direction} ->
             make_opts(maps:to_list(#{order => {Order, Direction}}), TableName);
         {Order, Direction} ->
             case Direction of
-                asc -> Result ++ ?ORDER ++ clmn(Order, DefaultTable) ++ " ASC";
-                desc -> Result ++ ?ORDER ++ clmn(Order, DefaultTable) ++ " DESC"
+                asc -> ?ORDER ++ clmn(Order, Table) ++ ?ASC;
+                desc -> ?ORDER ++ clmn(Order, Table) ++ ?DESC
             end;
-        Order -> Result ++ ?ORDER ++ clmn(Order, DefaultTable)
-    end,
-    Result2 = case proplists:get_value(limit, Opts) of
-        undefined -> Result1;
-        Limit -> Result1 ++ ?LIMIT ++ integer_to_list(Limit)
-    end,
-    Result3 = case proplists:get_value(offset, Opts) of
-        undefined -> Result2;
-        Offset -> Result2 ++ ?OFFSET ++ integer_to_list(Offset)
-    end,
-    Result3.
+        Order -> ?ORDER ++ clmn(Order, Table)
+    end.
 
+limit_opts(Opts) ->
+    case proplists:get_value(limit, Opts) of
+        undefined -> "";
+        Limit -> ?LIMIT ++ integer_to_list(Limit)
+    end.
+
+offset_opts(Opts) ->
+    case proplists:get_value(offset, Opts) of
+        undefined -> "";
+        Offset -> ?OFFSET ++ integer_to_list(Offset)
+    end.
 
 bt(Word) ->
     ?BT ++ to_l(Word) ++ ?BT.
