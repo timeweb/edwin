@@ -157,9 +157,9 @@ parse_conditions([{Key, {Type, Joiner}}|Rest], Join, Where) when is_atom(Joiner)
     parse_conditions(Rest, [{Key, Type, Joiner}|Join], Where);
 parse_conditions([{Key, {'NOT IN', Values}}|Rest], Join, Where) when is_list(Values) ->
     parse_conditions(Rest, Join, [{Key, 'NOT IN', Values}|Where]);
-parse_conditions([{Operation, {Keys, Value}}|Rest], Join, Where) when Operation =:= 'any equal'; Operation =:= like ->
-    ConditionList = [{atom_to_list(Key), Value} || Key <- Keys],
-    parse_conditions(Rest, Join, [{Operation, ConditionList}|Where]);
+parse_conditions([{Operation, Value}|Rest], Join, Where) when Operation =:= 'any equal'; Operation =:= like ->
+    Condition = build_condition_list(Value),
+    parse_conditions(Rest, Join, [{Operation, Condition}|Where]);
 parse_conditions([{Key, {between, Values}}|Rest], Join, Where) when is_list(Values) ->
     parse_conditions(Rest, Join, [{Key, between, Values}|Where]);
 parse_conditions([{Key, {Operator, Value}}|Rest], Join, Where) ->
@@ -178,7 +178,12 @@ parse_conditions([{Key, Values}|Rest], Join, Where) when is_list(Values) ->
     parse_conditions(Rest, Join, [{Key, 'IN', Values}|Where]);
 parse_conditions([{Key, Value}|Rest], Join, Where) ->
     parse_conditions(Rest, Join, [{Key, '=', Value}|Where]).
-    
+
+build_condition_list({Keys, Value}) when is_list(Keys) ->
+    [{atom_to_list(Key), Value} || Key <- Keys];
+build_condition_list({Key, Values}) when is_list(Values) ->
+    [{atom_to_list(Key), Value} || Value <- Values].
+
 compile_join(Stack, TableName) ->
     compile_join(Stack, [], TableName).
 compile_join([], Compiled, _TableName) ->
@@ -204,7 +209,7 @@ compile_where([{'any equal', Statements}|Rest], {Compiled, Values}, TableName) -
     {FieldStatement, ValueList} = {?BKTL ++ string:join(FieldList, ?OR) ++ ?BKTR, ValueList},
     compile_where(Rest, {[FieldStatement|Compiled], lists:append(Values, ValueList)}, TableName);
 compile_where([{'like', Statements}|Rest], {Compiled, Values}, TableName) ->
-    FieldList = [Field ++ ?LIKE ++ ?Q || {Field, _Value} <- Statements],
+    FieldList = [bt(Field) ++ ?LIKE ++ ?Q || {Field, _Value} <- Statements],
     ValueList = [LikeValue || {_Field, LikeValue} <- Statements],
     {FieldStatement, ValueList} = {?BKTL ++ string:join(FieldList, ?OR) ++ ?BKTR, ValueList},
     compile_where(Rest, {[FieldStatement|Compiled], lists:append(Values, ValueList)}, TableName);
