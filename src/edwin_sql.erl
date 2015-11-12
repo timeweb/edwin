@@ -296,9 +296,5 @@ v(true) ->
     1;
 v(false) ->
     0;
-v(null) ->
-    <<"NULL">>;
-v({AsIs}) ->
-    AsIs;
 v(Value) ->
     Value.
