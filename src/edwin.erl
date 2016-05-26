@@ -6,6 +6,8 @@
 -export([select/3, select_list/3]).
 -export([select/4, select_list/4]).
 -export([select/5, select_list/5]).
+-export([select_last/4]).
+-export([select_last/5]).
 -export([update/3]).
 -export([update/4]).
 -export([update/5]).
@@ -20,7 +22,6 @@
 -export([call/3]).
 -export([fn/3]).
 
-
 select(Pool, Table) ->
   select(Pool, Table, []).
 
@@ -30,7 +31,7 @@ select(Pool, Table, Where) when is_integer(Where) ->
   select(Pool, Table, [], Where).
 
 select(Pool, Table, Columns, Where) when is_integer(Where) ->
-  select(Pool, Table, Columns, #{ id => Where });
+  select(Pool, Table, Columns, #{id => Where});
 select(Pool, Table, Columns, Where) when is_map(Where) ->
   select(Pool, Table, Columns, Where, #{}).
 
@@ -51,6 +52,13 @@ select_list(Data) when is_map(Data) ->
   [Data];
 select_list(Data) ->
   Data.
+
+select_last(Pool, Table, Columns, Where) ->
+  select_last(Pool, Table, Columns, Where, id).
+
+select_last(Pool, Table, Columns, Where, PK) ->
+  Opts = #{limit => 1},
+  select(Pool, Table, Columns, Where, maps:put(order, {PK, desc}, Opts)).
 
 update(Pool, Table, Args) ->
   update(Pool, Table, Args, #{}).
