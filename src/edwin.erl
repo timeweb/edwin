@@ -22,6 +22,7 @@
 -export([execute/2]).
 -export([call/3]).
 -export([fn/3]).
+-export([escape/1]).
 
 select(Pool, Table) ->
   select(Pool, Table, []).
@@ -158,3 +159,6 @@ random_atom(Len) ->
   F = fun(_, R) ->
     [element(crypto:rand_uniform(Len, ChrsSize), Chrs) | R] end,
   list_to_atom(lists:foldl(F, "", lists:seq(1, Len))).
+
+escape(Str) ->
+  binary:replace(Str, [<<"'">>], <<"\\">>, [global, {insert_replaced, 1}]).
