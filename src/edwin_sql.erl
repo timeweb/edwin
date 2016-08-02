@@ -2,9 +2,10 @@
 
 -export([select/4]).
 -export([update/4]).
+-export([join_update/4]).
 -export([replace/2]).
 -export([delete/2]).
--export([multipleDelete/2]).
+-export([multiple_delete/2]).
 -export([insert/2]).
 -export([call/2]).
 -export([fn/2]).
@@ -56,13 +57,19 @@ select(Table, Columns, Where, Opts) ->
     SQL= ?SELECT ++ columns_as(Columns, Table) ++ ?FROM ++ bt(Table) ++ Conditions ++ Options,
     {SQL, Args}.
 
-
 update(Table, Args, Where, Opts) ->
     {Conditions, WhereArgs} = parse_conditions(Where, Table),
     {Cols, UpdateArgs} = cols(Args, Table),
-    Options = make_opts(Opts, Table), 
+    Options = make_opts(Opts, Table),
     SQL = ?UPDATE ++ bt(Table) ++ ?SET ++ Cols ++ Conditions ++ Options,
     {SQL, UpdateArgs ++ WhereArgs}.
+
+join_update(Table, Join, Args, Where) ->
+    {Conditions, WhereArgs} = parse_conditions(Where, Table),
+    {JoinRules, JoinArgs} = parse_conditions(Join, Table),
+    {Cols, UpdateArgs} = cols(Args, Table),
+    SQL = ?UPDATE ++ bt(Table) ++ JoinRules ++ ?SET ++ Cols ++ Conditions,
+    {SQL, JoinArgs ++ UpdateArgs ++ WhereArgs}.
 
 replace(Table, Args) ->
     Args1 = [{K, V} || {K, V} <- Args, V =/= undefined],
@@ -74,7 +81,7 @@ delete(Table, Where) ->
     SQL = ?DELETE ++ bt(Table) ++ Conditions,
     {SQL, Args}.
 
-multipleDelete([Table | _JoinedTables] = Tables, Where) ->
+multiple_delete([Table | _JoinedTables] = Tables, Where) ->
     {Conditions, Args} = parse_conditions(Where, Table),
     TableList = [bt(Tbl) || Tbl <- Tables],
     SQL = io_lib:format(<<"~s~s~s~s~s">>, [?MULTIPLE_DELETE, string:join(TableList, ?COMMA), ?FROM, Table, Conditions]),
@@ -106,7 +113,7 @@ columns_as(C, _Table) when C =:= []; C =:= ?STAR ->
     ?STAR;
 columns_as(C, Table) ->
     string:join([as(S, Table) || S <- C], ?COMMA).
-        
+
 
 defs(Columns) ->
     string:join([?Q || _ <- lists:seq(1, length(Columns))], ?COMMA).
@@ -133,9 +140,9 @@ to_l(L) when is_list(L) -> L.
 
 
 cols(Query, TableName) ->
-   cols(Query, {[], []}, TableName).
+    cols(Query, {[], []}, TableName).
 cols([], {Compiled, Values}, _TableName) ->
-   {string:join(lists:reverse(Compiled), ?COMMA), lists:map(fun v/1, lists:reverse(Values))};
+    {string:join(lists:reverse(Compiled), ?COMMA), lists:map(fun v/1, lists:reverse(Values))};
 cols([{Key, {{AsIs, Params}}}|Rest], {Compiled, Values}, TableName) when is_list(Params) ->
     cols(Rest, {[clmn(Key, TableName) ++ ?EQ ++ to_l(AsIs)|Compiled], lists:reverse(Params) ++ Values}, TableName);
 cols([{Key, {{AsIs, Param}}}|Rest], {Compiled, Values}, TableName) ->
@@ -144,7 +151,7 @@ cols([{Key, {AsIs}}|Rest], {Compiled, Values}, TableName) ->
     cols(Rest, {[clmn(Key, TableName) ++ ?EQ ++ to_l(AsIs)|Compiled], Values}, TableName);
 cols([{Key, Value}|Rest], {Compiled, Values}, TableName) ->
     cols(Rest, {[clmn(Key, TableName) ++ ?ARG|Compiled], [Value|Values]}, TableName).
-    
+
 
 parse_conditions(Conditions, TableName) ->
     {Join, Where} = parse_conditions(Conditions, [], []),
@@ -220,13 +227,13 @@ compile_where([{Key, 'OR', Statements}|Rest], {Compiled, Values}, TableName) ->
     compile_where(Rest, {[FieldStatement|Compiled], lists:append(Values, ValueList)}, TableName);
 compile_where([{Key, Op, Value}|Rest], {Compiled, Values}, TableName) ->
     {Args, AddValues} = case Value of
-        {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
-        {{Inline, Param}} -> {to_l(Inline), [Param]};
-        {Inline}  -> {to_l(Inline), []};
-        Value when is_list(Value), Op =:= between -> {?Q ++ ?AND ++ ?Q, lists:reverse(Value)};
-        Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
-        Value -> {?Q, [Value]}
-    end,
+                            {{Inline, Params}}  when is_list(Params) -> {to_l(Inline), lists:reverse(Params)};
+                            {{Inline, Param}} -> {to_l(Inline), [Param]};
+                            {Inline}  -> {to_l(Inline), []};
+                            Value when is_list(Value), Op =:= between -> {?Q ++ ?AND ++ ?Q, lists:reverse(Value)};
+                            Value when is_list(Value) -> {?BKTL ++ string:join([?Q || _ <- Value],?CMAS) ++ ?BKTR, Value};
+                            Value -> {?Q, [Value]}
+                        end,
     compile_where(Rest, {[clmn(Key, TableName) ++ spc(Op) ++ Args|Compiled], Values ++ AddValues}, TableName).
 
 make_opts(Opts, DefaultTable) ->
@@ -285,7 +292,7 @@ clmn(Clmn, DefaultTable) when is_atom(Clmn) ->
         [Table, Column] -> bt(Table) ++ ?DOT ++ bt(Column)
     end;
 clmn(AsIs, _DefaultTable) ->
-    to_l(AsIs).   
+    to_l(AsIs).
 
 as({Column, As}, Table) ->
     clmn(Column, Table) ++ ?AS ++ bt(As);

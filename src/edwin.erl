@@ -11,6 +11,7 @@
 -export([update/3]).
 -export([update/4]).
 -export([update/5]).
+-export([join_update/5]).
 -export([replace/3]).
 -export([insert/3]).
 -export([delete/2]).
@@ -21,7 +22,6 @@
 -export([execute/2]).
 -export([call/3]).
 -export([fn/3]).
--export([escape/1]).
 
 select(Pool, Table) ->
   select(Pool, Table, []).
@@ -63,12 +63,18 @@ select_last(Pool, Table, Columns, Where, PK) ->
 
 update(Pool, Table, Args) ->
   update(Pool, Table, Args, #{}).
+
 update(Pool, Table, Args, Where) when is_integer(Where) ->
   update(Pool, Table, Args, #{ id => Where });
 update(Pool, Table, Args, Where) ->
   update(Pool, Table, Args, Where, #{}).
-update(Pool, Table, Args, Where, Opts) when is_map(Where), is_map(Args), is_map(Opts) ->
+
+update(Pool, Table, Args, Where, Opts) when is_atom(Table), is_map(Where), is_map(Args), is_map(Opts) ->
   {SQL, Data} = edwin_sql:update(Table, maps:to_list(Args), maps:to_list(Where), maps:to_list(Opts)),
+  ex(Pool, SQL, Data).
+
+join_update(Pool, Table, Join, Args, Where) when is_map(Join), is_map(Where), is_map(Args) ->
+  {SQL, Data} = edwin_sql:join_update(Table, maps:to_list(Join), maps:to_list(Args), maps:to_list(Where)),
   ex(Pool, SQL, Data).
 
 replace(Pool, Table, Values) ->
@@ -89,7 +95,7 @@ delete(Pool, Table, Where) when is_map(Where) ->
   ex(Pool, SQL, Data).
 
 multipleDelete(Pool, Tables, Where) ->
-  {SQL, Data} = edwin_sql:multipleDelete(Tables, maps:to_list(Where)),
+  {SQL, Data} = edwin_sql:multiple_delete(Tables, maps:to_list(Where)),
   ex(Pool, SQL, Data).
 
 ex(Pool, SQL) ->
@@ -105,6 +111,7 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
                  Stmt
              end,
   try
+    io:format("~p ~p ~p~n", [Pool, SQL, Data]),
     ex(emysql:execute(Pool, StmtName, Data))
   catch
     exit:{{Status, Msg}, _} ->
@@ -152,6 +159,3 @@ random_atom(Len) ->
   F = fun(_, R) ->
     [element(crypto:rand_uniform(Len, ChrsSize), Chrs) | R] end,
   list_to_atom(lists:foldl(F, "", lists:seq(1, Len))).
-
-escape(Str) ->
-  binary:replace(Str, [<<"'">>], <<"\\">>, [global, {insert_replaced, 1}]).
