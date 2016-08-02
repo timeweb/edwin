@@ -111,7 +111,6 @@ ex(Pool, SQL, Data) when is_atom(Pool)->
                  Stmt
              end,
   try
-    io:format("~p ~p ~p~n", [Pool, SQL, Data]),
     ex(emysql:execute(Pool, StmtName, Data))
   catch
     exit:{{Status, Msg}, _} ->
