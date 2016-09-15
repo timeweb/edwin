@@ -23,6 +23,23 @@
 -export([call/3]).
 -export([fn/3]).
 -export([escape/1]).
+-export([start_transaction/1]).
+-export([rollback_transaction/1]).
+-export([commit_transaction/1]).
+-export([md5/1]).
+
+-define(REPLACE_MAP, [
+  {$1, "m"},
+  {$2, "n"},
+  {$3, "o"},
+  {$4, "p"},
+  {$5, "r"},
+  {$6, "s"},
+  {$7, "t"},
+  {$8, "u"},
+  {$9, "v"},
+  {$0, "w"}
+]).
 
 select(Pool, Table) ->
   select(Pool, Table, []).
@@ -99,25 +116,33 @@ multipleDelete(Pool, Tables, Where) ->
   {SQL, Data} = edwin_sql:multiple_delete(Tables, maps:to_list(Where)),
   ex(Pool, SQL, Data).
 
+start_transaction(Pool) ->
+  edwin_transaction:start(self(), Pool).
+
+rollback_transaction(Pool) ->
+  edwin_transaction:rollback(self(), Pool).
+
+commit_transaction(Pool) ->
+  edwin_transaction:commit(self(), Pool).
+
 ex(Pool, SQL) ->
   ex(Pool, SQL, []).
 ex(Pool, SQL, Data) when is_atom(Pool)->
-  StmtName = case edwin_st:get_stmt(SQL) of
-               null ->
-                 StmtNew = random_atom(10),
-                 emysql:prepare(StmtNew, SQL),
-                 edwin_st:set_stmt(StmtNew, SQL),
-                 StmtNew;
-               Stmt when is_atom(Stmt) ->
-                 Stmt
-             end,
+  StmtName = sql_to_stmt(SQL),
+  case emysql_statements:fetch(StmtName) of
+    undefined ->
+      emysql:prepare(StmtName, SQL);
+    _  ->
+      ok
+  end,
+  TransactionPool = edwin_transaction:match(self(), Pool),
   try
-    ex(emysql:execute(Pool, StmtName, Data))
+    ex(emysql:execute(TransactionPool, StmtName, Data))
   catch
     exit:{{Status, Msg}, _} ->
       erlang:error({edwin_error, #{status => Status, msg => Msg}});
     exit:pool_not_found ->
-      erlang:error({error, #{msg => lists:flatten(io_lib:format("unknown pool `~s`.", [Pool]))}})
+      erlang:error({error, #{msg => lists:flatten(io_lib:format("unknown pool `~s`.", [TransactionPool]))}})
   end.
 
 ex(#ok_packet{insert_id = 0, affected_rows = AffectedRows}) ->
@@ -144,7 +169,8 @@ fn(Pool, Fun, Args) ->
 
 
 execute(Pool, SQL) ->
-  ex(emysql:execute(Pool, SQL)).
+  TransactionPool = edwin_transaction:match(self(), Pool),
+  ex(emysql:execute(TransactionPool, SQL)).
 
 
 result(List) when length(List) =:= 1 ->
@@ -152,13 +178,14 @@ result(List) when length(List) =:= 1 ->
 result(List) ->
   [maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- P]) || P <- List].
 
+sql_to_stmt(SQL) ->
+  Hash = md5(SQL),
+  Stmt = lists:map(fun (E) -> proplists:get_value(E, ?REPLACE_MAP, E) end, Hash),
+  list_to_atom(lists:flatten(Stmt)).
 
-random_atom(Len) ->
-  Chrs = list_to_tuple("abcdefghijklmnopqrstuvwxyz"),
-  ChrsSize = size(Chrs),
-  F = fun(_, R) ->
-    [element(crypto:rand_uniform(Len, ChrsSize), Chrs) | R] end,
-  list_to_atom(lists:foldl(F, "", lists:seq(1, Len))).
+md5(Data) ->
+  Binary16Base = crypto:hash(md5, Data),
+  lists:flatten([io_lib:format("~2.16.0b", [B]) || <<B>> <= Binary16Base]).
 
 escape(Str) ->
   binary:replace(Str, [<<"'">>], <<"\\">>, [global, {insert_replaced, 1}]).

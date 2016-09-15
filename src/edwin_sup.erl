@@ -13,4 +13,4 @@ start_link() ->
 
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(edwin_st, worker)]} }.
+    {ok, { {one_for_one, 5, 10}, [?CHILD(edwin_transaction, worker)]} }.
