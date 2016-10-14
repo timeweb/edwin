@@ -23,6 +23,7 @@
 
 -define(SERVER, ?MODULE).
 -define(TRANSACTION_POOL_LIFETIME, 60000).
+-define(TRANSACTION_CONNECTION_TIMEOUT, 10000).
 
 -record(state, {transactions = [] :: list()}).
 
@@ -33,20 +34,19 @@
 start(Owner, ParentPool) ->
   {ok, PoolEnt} = get_pool(ParentPool),
   NewPoolId = list_to_atom(atom_to_list(ParentPool) ++ "_" ++ edwin:md5(crypto:rand_bytes(32))),
-  put({transaction_id, ParentPool}, NewPoolId),
-  emysql:add_pool(
-    NewPoolId,
-    1,
-    PoolEnt#pool.user,
-    PoolEnt#pool.password,
-    PoolEnt#pool.host,
-    PoolEnt#pool.port,
-    PoolEnt#pool.database,
-    PoolEnt#pool.encoding
+  emysql:add_pool(NewPoolId, [
+    {size, 1},
+    {user, PoolEnt#pool.user},
+    {password, PoolEnt#pool.password},
+    {host, PoolEnt#pool.host},
+    {port, PoolEnt#pool.port},
+    {database, PoolEnt#pool.database},
+    {encoding, PoolEnt#pool.encoding},
+    {connect_timeout, ?TRANSACTION_CONNECTION_TIMEOUT}]
   ),
   {ok, 0} = edwin:execute(NewPoolId, "START TRANSACTION"),
   gen_server:cast(?SERVER, {add, {Owner, ParentPool, NewPoolId}}),
-{ok, NewPoolId}.
+  {ok, NewPoolId}.
 
 match(Owner, ParentPool) ->
   case gen_server:call(?SERVER, {get, {Owner, ParentPool}}) of
@@ -144,8 +144,11 @@ clean(Owner, ParentPool, TransactionsList0) ->
        TransactionsList0;
      TransactionPoolId ->
        case emysql_conn_mgr:has_pool(TransactionPoolId) of
-         false -> ok;
-         true -> emysql_conn_mgr:remove_pool(TransactionPoolId)
+         false ->
+           ok;
+         true ->
+           emysql:decrement_pool_size(TransactionPoolId, 1),
+           emysql_conn_mgr:remove_pool(TransactionPoolId)
        end,
        proplists:delete({Owner, ParentPool}, TransactionsList0)
    end.
