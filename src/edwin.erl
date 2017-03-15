@@ -128,16 +128,9 @@ commit_transaction(Pool) ->
 ex(Pool, SQL) ->
   ex(Pool, SQL, []).
 ex(Pool, SQL, Data) when is_atom(Pool)->
-  StmtName = sql_to_stmt(SQL),
-  case emysql_statements:fetch(StmtName) of
-    undefined ->
-      emysql:prepare(StmtName, SQL);
-    _  ->
-      ok
-  end,
   TransactionPool = edwin_transaction:match(self(), Pool),
   try
-    ex(emysql:execute(TransactionPool, StmtName, Data))
+    ex(emysql:execute(TransactionPool, SQL, Data))
   catch
     exit:{{Status, Msg}, _} ->
       erlang:error({edwin_error, #{status => Status, msg => Msg}});
