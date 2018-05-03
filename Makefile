@@ -1,8 +1,8 @@
-REBAR=./rebar
+REBAR=./rebar3
 
 all: deps compile
 
-deps: get-deps update-deps
+deps: get-deps
 
 compile:
 	$(REBAR) compile
@@ -10,8 +10,8 @@ compile:
 get-deps:
 	$(REBAR) get-deps
 
-update-deps:
-	$(REBAR) update-deps
+clean:
+	$(REBAR) clean
 
 console:
 	erl -pa deps/*/ebin -pa deps/*/include -pa ebin

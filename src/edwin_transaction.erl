@@ -33,7 +33,7 @@
 
 start(Owner, ParentPool) ->
   {ok, PoolEnt} = get_pool(ParentPool),
-  NewPoolId = list_to_atom(atom_to_list(ParentPool) ++ "_" ++ edwin:md5(crypto:rand_bytes(32))),
+  NewPoolId = list_to_atom(atom_to_list(ParentPool) ++ "_" ++ edwin:md5(crypto:strong_rand_bytes(32))),
   emysql:add_pool(NewPoolId, [
     {size, 1},
     {user, PoolEnt#pool.user},

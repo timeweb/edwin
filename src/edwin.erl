@@ -171,11 +171,6 @@ result(List) when length(List) =:= 1 ->
 result(List) ->
   [maps:from_list([{binary_to_atom(K, utf8), V} || {K, V} <- P]) || P <- List].
 
-sql_to_stmt(SQL) ->
-  Hash = md5(SQL),
-  Stmt = lists:map(fun (E) -> proplists:get_value(E, ?REPLACE_MAP, E) end, Hash),
-  list_to_atom(lists:flatten(Stmt)).
-
 md5(Data) ->
   Binary16Base = crypto:hash(md5, Data),
   lists:flatten([io_lib:format("~2.16.0b", [B]) || <<B>> <= Binary16Base]).
